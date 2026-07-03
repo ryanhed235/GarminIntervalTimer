@@ -1,0 +1,7 @@
+# Ignore compiled binaries
+bin/
+*.prg
+
+# CRITICAL: Ignore Garmin developer keys
+*.der
+*.pem
