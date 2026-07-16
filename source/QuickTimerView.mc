@@ -12,6 +12,7 @@ class QuickTimerView extends WatchUi.View {
     private var _endTime as Number = 0;
     private var _currentSet as Number = 0;
     private var _pausedRemainingMs as Number = 35000;
+    private var _lastWakeMinute as Number = -1;
 
     function initialize() {
         View.initialize();
@@ -25,6 +26,7 @@ class QuickTimerView extends WatchUi.View {
             gNeedsReset = false;
             _currentSet = 0;
             _pausedRemainingMs = gIntervalSec * 1000;
+            _lastWakeMinute = -1;
             if (_isRunning) {
                 _endTime = System.getTimer() + _pausedRemainingMs;
             }
@@ -54,6 +56,17 @@ class QuickTimerView extends WatchUi.View {
                 _currentSet++;
                 _endTime = System.getTimer() + currentIntervalMs;
                 remainingMs = currentIntervalMs;
+                _lastWakeMinute = -1;
+            } else {
+                var totalSec = remainingMs / 1000;
+                if (totalSec > 0 && totalSec % 60 == 0) {
+                    if (_lastWakeMinute != totalSec) {
+                        _lastWakeMinute = totalSec;
+                        if (Attention has :backlight) {
+                            Attention.backlight(0.2);
+                        }
+                    }
+                }
             }
         }
 
@@ -110,6 +123,7 @@ class QuickTimerView extends WatchUi.View {
         } else {
             _isRunning = true;
             _endTime = System.getTimer() + _pausedRemainingMs;
+            _lastWakeMinute = -1;
             if (_timer == null) {
                 _timer = new Timer.Timer();
             }
