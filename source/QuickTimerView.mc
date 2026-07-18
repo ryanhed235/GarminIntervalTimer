@@ -14,7 +14,6 @@ class QuickTimerView extends WatchUi.View {
     private var _currentSet as Number = 0;
     private var _pausedRemainingMs as Number = 35000;
     private var _lastWakeMinute as Number = -1;
-    private var _session as ActivityRecording.Session?;
 
     function initialize() {
         View.initialize();
@@ -25,12 +24,12 @@ class QuickTimerView extends WatchUi.View {
 
     function onShow() as Void {
         if (gNeedsReset) {
-            if (_session != null) {
-                if (_session.isRecording()) {
-                    _session.stop();
+            if (gSession != null) {
+                if (gSession.isRecording()) {
+                    gSession.stop();
                 }
-                _session.discard();
-                _session = null;
+                gSession.discard();
+                gSession = null;
             }
             gNeedsReset = false;
             _currentSet = 0;
@@ -149,8 +148,8 @@ class QuickTimerView extends WatchUi.View {
                 _timer.stop();
                 _timer = null;
             }
-            if (_session != null && _session.isRecording()) {
-                _session.stop();
+            if (gSession != null && gSession.isRecording()) {
+                gSession.stop();
             }
         } else {
             _isRunning = true;
@@ -159,17 +158,17 @@ class QuickTimerView extends WatchUi.View {
             if (_timer == null) {
                 _timer = new Timer.Timer();
             }
-            if (_session == null) {
+            if (gSession == null) {
                 if (Toybox has :ActivityRecording) {
-                    _session = ActivityRecording.createSession({
+                    gSession = ActivityRecording.createSession({
                         :name=>"Intervals",
                         :sport=>ActivityRecording.SPORT_TRAINING,
                         :subSport=>ActivityRecording.SUB_SPORT_GENERIC
                     });
                 }
             }
-            if (_session != null && !_session.isRecording()) {
-                _session.start();
+            if (gSession != null && !gSession.isRecording()) {
+                gSession.start();
             }
             _timer.start(method(:onTimerCallback), 100, true);
         }

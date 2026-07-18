@@ -5,6 +5,7 @@ import Toybox.WatchUi;
 var gIntervalSec as Number = 35;
 var gTotalSets as Number = 20;
 var gNeedsReset as Boolean = false;
+var gSession = null;
 
 class QuickTimerApp extends Application.AppBase {
 
@@ -16,6 +17,13 @@ class QuickTimerApp extends Application.AppBase {
     }
 
     function onStop(state as Dictionary?) as Void {
+        if (gSession != null) {
+            if (gSession.isRecording()) {
+                gSession.stop();
+            }
+            gSession.discard();
+            gSession = null;
+        }
     }
 
     function getInitialView() {
