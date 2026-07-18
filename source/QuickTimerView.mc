@@ -4,6 +4,7 @@ import Toybox.Timer;
 import Toybox.Attention;
 import Toybox.Lang;
 import Toybox.System;
+import Toybox.ActivityRecording;
 
 class QuickTimerView extends WatchUi.View {
 
@@ -13,6 +14,7 @@ class QuickTimerView extends WatchUi.View {
     private var _currentSet as Number = 0;
     private var _pausedRemainingMs as Number = 35000;
     private var _lastWakeMinute as Number = -1;
+    private var _session as ActivityRecording.Session?;
 
     function initialize() {
         View.initialize();
@@ -23,6 +25,13 @@ class QuickTimerView extends WatchUi.View {
 
     function onShow() as Void {
         if (gNeedsReset) {
+            if (_session != null) {
+                if (_session.isRecording()) {
+                    _session.stop();
+                }
+                _session.discard();
+                _session = null;
+            }
             gNeedsReset = false;
             _currentSet = 0;
             _pausedRemainingMs = gIntervalSec * 1000;
@@ -47,11 +56,19 @@ class QuickTimerView extends WatchUi.View {
             if (remainingMs <= 0) {
                 // Vibrate when hitting 0
                 if (Attention has :vibrate) {
-                    var vibeData = [new Attention.VibeProfile(100, 660)];
-                    Attention.vibrate(vibeData);
+                    try {
+                        var vibeData = [new Attention.VibeProfile(100, 660)] as Lang.Array<Attention.VibeProfile>;
+                        Attention.vibrate(vibeData);
+                    } catch (e) {
+                        System.println("Vibrate failed: " + e.getErrorMessage());
+                    }
                 }
                 if (Attention has :backlight) {
-                    Attention.backlight(0.2); // Wake up at 20% brightness
+                    try {
+                        Attention.backlight(true); // Wake up backlight
+                    } catch (e) {
+                        System.println("Backlight failed: " + e.getErrorMessage());
+                    }
                 }
                 _currentSet++;
                 _endTime = System.getTimer() + currentIntervalMs;
@@ -62,8 +79,20 @@ class QuickTimerView extends WatchUi.View {
                 if (totalSec > 0 && totalSec % 60 == 0) {
                     if (_lastWakeMinute != totalSec) {
                         _lastWakeMinute = totalSec;
+                        if (Attention has :vibrate) {
+                            try {
+                                var silentVibe = [new Attention.VibeProfile(0, 1)] as Lang.Array<Attention.VibeProfile>;
+                                Attention.vibrate(silentVibe);
+                            } catch (e) {
+                                System.println("Periodic silent vibrate failed: " + e.getErrorMessage());
+                            }
+                        }
                         if (Attention has :backlight) {
-                            Attention.backlight(0.2);
+                            try {
+                                Attention.backlight(true);
+                            } catch (e) {
+                                System.println("Periodic backlight failed: " + e.getErrorMessage());
+                            }
                         }
                     }
                 }
@@ -120,12 +149,27 @@ class QuickTimerView extends WatchUi.View {
                 _timer.stop();
                 _timer = null;
             }
+            if (_session != null && _session.isRecording()) {
+                _session.stop();
+            }
         } else {
             _isRunning = true;
             _endTime = System.getTimer() + _pausedRemainingMs;
             _lastWakeMinute = -1;
             if (_timer == null) {
                 _timer = new Timer.Timer();
+            }
+            if (_session == null) {
+                if (Toybox has :ActivityRecording) {
+                    _session = ActivityRecording.createSession({
+                        :name=>"Intervals",
+                        :sport=>ActivityRecording.SPORT_TRAINING,
+                        :subSport=>ActivityRecording.SUB_SPORT_GENERIC
+                    });
+                }
+            }
+            if (_session != null && !_session.isRecording()) {
+                _session.start();
             }
             _timer.start(method(:onTimerCallback), 100, true);
         }
