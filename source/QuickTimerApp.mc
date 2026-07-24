@@ -6,6 +6,7 @@ var gIntervalSec as Number = 35;
 var gTotalSets as Number = 20;
 var gNeedsReset as Boolean = false;
 var gSession = null;
+var gEnableActivityRecording as Boolean = true;
 
 class QuickTimerApp extends Application.AppBase {
 

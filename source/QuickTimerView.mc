@@ -47,54 +47,12 @@ class QuickTimerView extends WatchUi.View {
 
         var cx = dc.getWidth() / 2;
         var cy = dc.getHeight() / 2;
-        var currentIntervalMs = gIntervalSec * 1000;
 
         var remainingMs = _pausedRemainingMs;
         if (_isRunning) {
             remainingMs = _endTime - System.getTimer();
-            if (remainingMs <= 0) {
-                // Vibrate when hitting 0
-                if (Attention has :vibrate) {
-                    try {
-                        var vibeData = [new Attention.VibeProfile(100, 660)] as Lang.Array<Attention.VibeProfile>;
-                        Attention.vibrate(vibeData);
-                    } catch (e) {
-                        System.println("Vibrate failed: " + e.getErrorMessage());
-                    }
-                }
-                if (Attention has :backlight) {
-                    try {
-                        Attention.backlight(true); // Wake up backlight
-                    } catch (e) {
-                        System.println("Backlight failed: " + e.getErrorMessage());
-                    }
-                }
-                _currentSet++;
-                _endTime = System.getTimer() + currentIntervalMs;
-                remainingMs = currentIntervalMs;
-                _lastWakeMinute = -1;
-            } else {
-                var totalSec = remainingMs / 1000;
-                if (totalSec > 0 && totalSec % 60 == 0) {
-                    if (_lastWakeMinute != totalSec) {
-                        _lastWakeMinute = totalSec;
-                        if (Attention has :vibrate) {
-                            try {
-                                var silentVibe = [new Attention.VibeProfile(0, 1)] as Lang.Array<Attention.VibeProfile>;
-                                Attention.vibrate(silentVibe);
-                            } catch (e) {
-                                System.println("Periodic silent vibrate failed: " + e.getErrorMessage());
-                            }
-                        }
-                        if (Attention has :backlight) {
-                            try {
-                                Attention.backlight(true);
-                            } catch (e) {
-                                System.println("Periodic backlight failed: " + e.getErrorMessage());
-                            }
-                        }
-                    }
-                }
+            if (remainingMs < 0) {
+                remainingMs = 0;
             }
         }
 
@@ -148,7 +106,7 @@ class QuickTimerView extends WatchUi.View {
                 _timer.stop();
                 _timer = null;
             }
-            if (gSession != null && gSession.isRecording()) {
+            if (gEnableActivityRecording && gSession != null && gSession.isRecording()) {
                 gSession.stop();
             }
         } else {
@@ -158,17 +116,19 @@ class QuickTimerView extends WatchUi.View {
             if (_timer == null) {
                 _timer = new Timer.Timer();
             }
-            if (gSession == null) {
-                if (Toybox has :ActivityRecording) {
-                    gSession = ActivityRecording.createSession({
-                        :name=>"Intervals",
-                        :sport=>ActivityRecording.SPORT_TRAINING,
-                        :subSport=>ActivityRecording.SUB_SPORT_GENERIC
-                    });
+            if (gEnableActivityRecording) {
+                if (gSession == null) {
+                    if (Toybox has :ActivityRecording) {
+                        gSession = ActivityRecording.createSession({
+                            :name=>"Intervals",
+                            :sport=>ActivityRecording.SPORT_TRAINING,
+                            :subSport=>ActivityRecording.SUB_SPORT_GENERIC
+                        });
+                    }
                 }
-            }
-            if (gSession != null && !gSession.isRecording()) {
-                gSession.start();
+                if (gSession != null && !gSession.isRecording()) {
+                    gSession.start();
+                }
             }
             _timer.start(method(:onTimerCallback), 100, true);
         }
@@ -176,6 +136,54 @@ class QuickTimerView extends WatchUi.View {
     }
 
     function onTimerCallback() as Void {
+        if (_isRunning) {
+            var now = System.getTimer();
+            var remainingMs = _endTime - now;
+            if (remainingMs <= 0) {
+                // Vibrate when hitting 0
+                if (Attention has :vibrate) {
+                    try {
+                        var vibeData = [new Attention.VibeProfile(100, 660)] as Lang.Array<Attention.VibeProfile>;
+                        Attention.vibrate(vibeData);
+                    } catch (e) {
+                        System.println("Vibrate failed: " + e.getErrorMessage());
+                    }
+                }
+                if (Attention has :backlight) {
+                    try {
+                        Attention.backlight(true); // Wake up backlight
+                    } catch (e) {
+                        System.println("Backlight failed: " + e.getErrorMessage());
+                    }
+                }
+                _currentSet++;
+                var currentIntervalMs = gIntervalSec * 1000;
+                _endTime = now + currentIntervalMs;
+                _lastWakeMinute = -1;
+            } else {
+                var totalSec = remainingMs / 1000;
+                if (totalSec > 0 && totalSec % 60 == 0) {
+                    if (_lastWakeMinute != totalSec) {
+                        _lastWakeMinute = totalSec;
+                        if (Attention has :vibrate) {
+                            try {
+                                var silentVibe = [new Attention.VibeProfile(0, 1)] as Lang.Array<Attention.VibeProfile>;
+                                Attention.vibrate(silentVibe);
+                            } catch (e) {
+                                System.println("Periodic silent vibrate failed: " + e.getErrorMessage());
+                            }
+                        }
+                        if (Attention has :backlight) {
+                            try {
+                                Attention.backlight(true);
+                            } catch (e) {
+                                System.println("Periodic backlight failed: " + e.getErrorMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        }
         WatchUi.requestUpdate();
     }
 }
